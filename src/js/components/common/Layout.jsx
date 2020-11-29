@@ -4,7 +4,6 @@ import { useQuery } from 'react-query';
 import { Grid, CssBaseline, makeStyles } from '@material-ui/core';
 import Header from './Header';
 import SideBar from './SideBar';
-import Footer from './Footer';
 
 import { api } from '../../helpers/axios';
 
@@ -58,7 +57,6 @@ const Layout = ({ children }) => {
             </div>
           </main>
         </Grid>
-        <Footer />
       </>
     );
   } return <></>;

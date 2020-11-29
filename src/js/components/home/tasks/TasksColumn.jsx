@@ -2,26 +2,36 @@ import React, { useEffect, useRef } from 'react';
 import { useInfiniteQuery } from 'react-query';
 import PropTypes from 'prop-types';
 import { Droppable } from 'react-beautiful-dnd';
-import styled from 'styled-components';
+import { makeStyles } from '@material-ui/core';
 
 import Task from './Task';
 import { api } from '../../../helpers/axios';
 import taskStatus from '../../../enums/taskStatus';
 
-const Div = styled.div`
-  height: 75vh;
-  overflow-x: hidden;
-  overflow-y: scroll;
-`;
+const useStyles = makeStyles(() => ({
+  overflow: {
+    overflowX: 'hidden',
+    overflowY: 'scroll',
+    height: '60vh',
+  },
+}));
 
-const TaskColumn = ({ statusTitle, droppableId, projectId }) => {
+const TaskColumn = ({ droppableId, projectId }) => {
+  const classes = useStyles();
+
   const limit = 10;
   let offset = 0;
   let tasks = [];
   const ref = useRef(null);
   const fetchTasks = async (key, nextId = 0) => {
     const res = await api
-      .get(`/projects/${projectId}/tasks?status=${taskStatus.getValue(droppableId)}&offset=${nextId}&limit=${limit}`);
+      .get(`/projects/${projectId}/tasks`, {
+        params: {
+          status: taskStatus.getValue(droppableId),
+          offset: nextId,
+          limit,
+        },
+      });
     return res.data;
   };
 
@@ -50,23 +60,51 @@ const TaskColumn = ({ statusTitle, droppableId, projectId }) => {
     <Droppable droppableId={droppableId} isCombineEnabled>
       {(provided) => (
         <div
-          className="col-2 border bg-light"
           {...provided.droppableProps}
           ref={provided.innerRef}
+          className={classes.overflow}
         >
-          <h4 className="pt-3 pb-1">{statusTitle}</h4>
-          <Div ref={ref}>
+          <div
+            ref={ref}
+          >
             {
               tasks && tasks.map((task, index) => (
                 <Task
+                  projectId={projectId}
                   droppableId={droppableId}
-                  task={task}
+                  task={{
+                    id: task.id,
+                    name: task.name,
+                    description: task.description,
+                    status: task.status,
+                    priority: task.priority,
+                    distribute: task.distribute,
+                    createdAt: task.created_at,
+                  }}
+                  created={{
+                    id: task.created_id,
+                    fullName: task.created_name,
+                    email: task.created_email,
+                    avatar: task.created_avatar,
+                  }}
+                  updated={{
+                    id: task.updated_id,
+                    fullName: task.updated_name,
+                    email: task.updated_email,
+                    avatar: task.updated_avatar,
+                  }}
+                  assign={{
+                    id: task.assign_id,
+                    fullName: task.assign_name,
+                    email: task.assign_email,
+                    avatar: task.assign_avatar,
+                  }}
                   key={task.id}
                   index={index}
                 />
               ))
             }
-          </Div>
+          </div>
           {provided.placeholder}
         </div>
       )}

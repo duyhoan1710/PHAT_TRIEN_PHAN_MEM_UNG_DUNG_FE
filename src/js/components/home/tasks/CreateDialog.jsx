@@ -1,118 +1,210 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryCache } from 'react-query';
-import { useForm } from 'react-hook-form';
+import { useMutation, useQuery, useQueryCache } from 'react-query';
+import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers';
 import PropTypes from 'prop-types';
 import {
-  Button,
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  Alert,
-} from 'reactstrap';
+  Dialog, DialogActions, DialogContent, DialogTitle, Button,
+  TextField, FormGroup, MenuItem, Select, InputLabel, FormControl,
+  FormHelperText, Avatar, Typography, makeStyles,
+} from '@material-ui/core';
+import { useSnackbar } from 'notistack';
 
 import { api } from '../../../helpers/axios';
 import taskPriority from '../../../enums/taskPriority';
+import taskDistribute from '../../../enums/taskDistribute';
 
 const schema = yup.object().shape({
   name: yup.string().required(),
   description: yup.string().nullable(),
   priority: yup.number().oneOf(
     taskPriority.getValues(),
-  ),
+  ).required(),
+  distribute: yup.number().oneOf(
+    taskDistribute.getValues(),
+  ).required(),
+  assignId: yup.number().nullable(),
 });
+
+const useStyles = makeStyles((theme) => ({
+  small: {
+    width: theme.spacing(4),
+    height: theme.spacing(4),
+    marginRight: theme.spacing(1),
+  },
+}));
 
 const CreateDialog = ({ projectId }) => {
   const queryCache = useQueryCache();
 
-  const { handleSubmit, register, errors } = useForm({
+  const classes = useStyles();
+
+  const { enqueueSnackbar } = useSnackbar();
+  const {
+    handleSubmit, register, errors, control,
+  } = useForm({
     resolver: yupResolver(schema),
+    mode: 'onChange',
   });
 
-  const [errorMessage, setErrorMessage] = useState('');
   const [isOpenModal, setIsOpenModal] = useState(false);
 
   const toggle = () => setIsOpenModal(!isOpenModal);
 
-  const [handleCreateTask] = useMutation(
-    ({ name, description, priority }) => api.post(`/projects/${projectId}/tasks`, { name, description, priority }),
+  const { data: getListMember } = useQuery('list member', async () => {
+    const res = await api.get(`/projects/${projectId}/members`, {
+      params: {
+        offset: 0,
+        limit: 100,
+      },
+    });
+    return res.data;
+  });
+
+  const [handleCreateTask, { isLoading }] = useMutation(
+    ({
+      name, description, priority, distribute, assignId,
+    }) => api.post(`/projects/${projectId}/tasks`, {
+      name, description, priority, distribute, assignId,
+    }),
     {
       onSuccess: () => {
+        enqueueSnackbar('Create Task Success', { variant: 'success' });
         queryCache.invalidateQueries('PENDING');
         toggle();
       },
       onError: (e) => {
-        setErrorMessage(e.response.data.message);
+        enqueueSnackbar(e.data.response.message, { variant: 'error' });
       },
     },
   );
-  const onSubmit = ({ name, description, priority }) => {
-    handleCreateTask({ name, description, priority });
-  };
-
-  const showError = (type) => errors && errors[type] && <p className="text-danger">{errors[type].message}</p>;
 
   return (
     <>
-      <Button color="primary" onClick={toggle}>New Task</Button>
-      <Modal isOpen={isOpenModal} toggle={toggle}>
-        <Form onSubmit={handleSubmit(onSubmit)}>
-          <ModalHeader toggle={toggle}>Create New Task</ModalHeader>
-          <ModalBody>
-            <FormGroup className="mt-3">
-              <Label className="font-weight-bold">name</Label>
-              <Input
-                className="mb-2"
-                placeholder="name"
-                name="name"
-                onChange={() => setErrorMessage('')}
-                innerRef={register}
+      <Button variant="contained" color="primary" onClick={toggle}>New Task</Button>
+      <Dialog
+        open={isOpenModal}
+        aria-labelledby="form-dialog-title"
+        fullWidth
+        onClose={() => setIsOpenModal(false)}
+      >
+        <DialogTitle toggle={toggle}>Create New Task</DialogTitle>
+        <DialogContent>
+          <FormGroup>
+            <TextField
+              label="Name"
+              name="name"
+              fullWidth
+              variant="outlined"
+              style={{
+                marginBottom: 20,
+              }}
+              inputRef={register}
+              error={!!errors.name}
+              helperText={errors.name ? errors.name.message : ''}
+            />
+
+            <TextField
+              rows={4}
+              multiline
+              label="Description"
+              name="description"
+              style={{
+                marginBottom: 20,
+              }}
+              fullWidth
+              variant="outlined"
+              inputRef={register}
+              error={!!errors.description}
+              helperText={errors.description ? errors.description.message : ''}
+            />
+
+            <FormControl
+              variant="outlined"
+              error={!!errors.distribute}
+              style={{
+                marginBottom: 20,
+              }}
+            >
+              <InputLabel>Distribute</InputLabel>
+              <Controller
+                as={(
+                  <Select label="Distribute">
+                    {taskDistribute.getValues().map((distribute) => (
+                      <MenuItem key={distribute} value={distribute}>
+                        {taskDistribute.getKey(distribute)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                )}
+                name="distribute"
+                inputRef={register}
+                control={control}
               />
-              {showError('name')}
-            </FormGroup>
-            <FormGroup>
-              <Label className="font-weight-bold">Description</Label>
-              <Input
-                className="mb-2"
-                type="textarea"
-                placeholder="Description"
-                name="description"
-                onChange={() => setErrorMessage('')}
-                innerRef={register}
-              />
-              {showError('description')}
-              {errorMessage && <Alert color="danger">{errorMessage}</Alert>}
-            </FormGroup>
-            <FormGroup>
-              <Label className="font-weight-bold">Priority</Label>
-              <Input
-                className="mb-2"
-                type="select"
-                placeholder="Priority"
+              <FormHelperText>{errors.distribute ? errors.distribute.message : ''}</FormHelperText>
+            </FormControl>
+
+            <FormControl
+              variant="outlined"
+              error={!!errors.priority}
+              style={{
+                marginBottom: 20,
+              }}
+            >
+              <InputLabel>Priority</InputLabel>
+              <Controller
+                as={(
+                  <Select label="Priority">
+                    {taskPriority.getValues().map((priority) => (
+                      <MenuItem key={priority} value={priority}>
+                        {taskPriority.getKey(priority)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                )}
                 name="priority"
-                onChange={() => setErrorMessage('')}
-                innerRef={register}
-              >
-                {taskPriority && taskPriority.getValues().map((priority) => (
-                  <option value={priority} key={priority}>{taskPriority.getKey(priority)}</option>
-                ))}
-              </Input>
-              {showError('priority')}
-            </FormGroup>
-            {errorMessage && <Alert color="danger">{errorMessage}</Alert>}
-          </ModalBody>
-          <ModalFooter>
-            <Button type="submit" color="success">Submit</Button>
-            <Button color="danger" onClick={toggle}>Cancel</Button>
-          </ModalFooter>
-        </Form>
-      </Modal>
+                inputRef={register}
+                control={control}
+              />
+              <FormHelperText>{errors.priority ? errors.priority.message : ''}</FormHelperText>
+            </FormControl>
+
+            <FormControl
+              variant="outlined"
+              error={!!errors.assignId}
+            >
+              <InputLabel>Assign</InputLabel>
+              <Controller
+                as={(
+                  <Select label="Assign">
+                    {
+                      getListMember && getListMember.members.map((member) => (
+                        <MenuItem key={member.id} value={member.id}>
+                          <Avatar src={member.avatar} className={classes.small} />
+                          <Typography>{member.email}</Typography>
+                        </MenuItem>
+                      ))
+                    }
+                  </Select>
+                )}
+                name="assignId"
+                inputRef={register}
+                control={control}
+              />
+              <FormHelperText>{errors.assignId ? errors.assignId.message : ''}</FormHelperText>
+            </FormControl>
+          </FormGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsOpenModal(!isOpenModal)} color="secondary" variant="contained">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit(handleCreateTask)} color="primary" autoFocus disabled={isLoading} variant="contained">
+            {isLoading ? 'Loading...' : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

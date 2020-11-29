@@ -4,17 +4,9 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers';
 import {
-  Button,
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  Alert,
-} from 'reactstrap';
+  Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField, FormGroup,
+} from '@material-ui/core';
+import { useSnackbar } from 'notistack';
 
 import { api } from '../../../helpers/axios';
 
@@ -26,71 +18,87 @@ const schema = yup.object().shape({
 const CreateDialog = () => {
   const queryCache = useQueryCache();
 
-  const { handleSubmit, register, errors } = useForm({
+  const { enqueueSnackbar } = useSnackbar();
+
+  const {
+    register, errors, watch, handleSubmit,
+  } = useForm({
     resolver: yupResolver(schema),
+    mode: 'onChange',
   });
 
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isOpenModal, setIsOpenModal] = useState(false);
+  const {
+    name, description,
+  } = watch();
 
-  const toggle = () => setIsOpenModal(!isOpenModal);
+  const [isModalOpen, setIsOpenModal] = useState(false);
 
-  const [handleCreateTask] = useMutation(
-    ({ name, description }) => api.post('/projects', { name, description }),
+  const toggle = () => setIsOpenModal(!isModalOpen);
+
+  const [handleCreateTask, { isLoading }] = useMutation(
+    async () => {
+      await api.post('/projects', { name, description });
+    },
     {
       onSuccess: () => {
-        queryCache.invalidateQueries('projects');
         toggle();
+        enqueueSnackbar('Create Project success', { variant: 'success' });
+        queryCache.invalidateQueries('projects');
       },
       onError: (e) => {
-        setErrorMessage(e.response.data.message);
+        enqueueSnackbar(e.response.data.message, { variant: 'error' });
       },
     },
   );
-  const onSubmit = ({ name, description }) => {
-    handleCreateTask({ name, description });
-  };
-
-  const showError = (type) => errors && errors[type] && <p className="text-danger">{errors[type].message}</p>;
 
   return (
     <>
-      <Button color="primary" onClick={toggle}>New Project</Button>
-      <Modal isOpen={isOpenModal} toggle={toggle}>
-        <Form onSubmit={handleSubmit(onSubmit)}>
-          <ModalHeader toggle={toggle}>Create New Project</ModalHeader>
-          <ModalBody>
-            <FormGroup className="mt-3">
-              <Label className="font-weight-bold">Name</Label>
-              <Input
-                className="mb-2"
-                placeholder="Name"
-                name="name"
-                onChange={() => setErrorMessage('')}
-                innerRef={register}
-              />
-              {showError('name')}
-            </FormGroup>
-            <FormGroup>
-              <Label className="font-weight-bold">Description</Label>
-              <Input
-                className="mb-2"
-                type="textarea"
-                placeholder="Description"
-                name="description"
-                onChange={() => setErrorMessage('')}
-                innerRef={register}
-              />
-              {showError('description')}
-              {errorMessage && <Alert color="danger">{errorMessage}</Alert>}
-            </FormGroup>
-          </ModalBody>
-          <ModalFooter>
-            <Button type="submit" color="success">Submit</Button>
-            <Button color="danger" onClick={toggle}>Cancel</Button>
-          </ModalFooter>
-        </Form>
-      </Modal>
+      <Button variant="contained" color="primary" onClick={toggle}>
+        New Project
+      </Button>
+      <Dialog
+        open={isModalOpen}
+        aria-labelledby="form-dialog-title"
+        fullWidth
+        onClose={() => setIsOpenModal(false)}
+      >
+        <DialogTitle>Accept Overtime</DialogTitle>
+        <DialogContent>
+          <FormGroup>
+            <TextField
+              label="Name"
+              name="name"
+              fullWidth
+              variant="outlined"
+              style={{
+                marginBottom: 20,
+              }}
+              inputRef={register}
+              error={!!errors.name}
+              helperText={errors.name ? errors.name.message : ''}
+            />
+            <TextField
+              rows={4}
+              multiline
+              label="Description"
+              name="description"
+              fullWidth
+              variant="outlined"
+              inputRef={register}
+              error={!!errors.description}
+              helperText={errors.description ? errors.description.message : ''}
+            />
+          </FormGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsOpenModal(!isModalOpen)} color="secondary" variant="contained">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit(handleCreateTask)} color="primary" autoFocus disabled={isLoading} variant="contained">
+            {isLoading ? 'Loading...' : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

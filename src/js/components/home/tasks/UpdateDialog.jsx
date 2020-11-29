@@ -1,161 +1,322 @@
-import React, { useState } from 'react';
+/* eslint-disable no-shadow */
+import React from 'react';
 import PropTypes from 'prop-types';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
-import { useMutation, useQueryCache } from 'react-query';
+import { useMutation, useQueryCache, useQuery } from 'react-query';
 import { yupResolver } from '@hookform/resolvers';
 import {
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  Alert,
-} from 'reactstrap';
+  Dialog, DialogActions, DialogContent, DialogTitle, Button, makeStyles, Typography,
+  TextField, FormGroup, MenuItem, Select, InputLabel, FormControl, FormHelperText, Avatar,
+} from '@material-ui/core';
+import { useSnackbar } from 'notistack';
 
 import taskStatus from '../../../enums/taskStatus';
+import taskPriority from '../../../enums/taskPriority';
 import { api } from '../../../helpers/axios';
+import taskDistribute from '../../../enums/taskDistribute';
 
 const schema = yup.object().shape({
   title: yup.string().required(),
-  description: yup.string().nullable(),
+  description: yup.string().required(),
   status: yup.number().oneOf(
     taskStatus.getValues(),
   ),
+  priority: yup.number().oneOf(
+    taskPriority.getValues(),
+  ),
+  assignId: yup.number().nullable(),
 });
 
-function UpdateDialog({
-  modal,
+const useStyles = makeStyles((theme) => ({
+  small: {
+    width: theme.spacing(4),
+    height: theme.spacing(4),
+    marginRight: theme.spacing(1),
+  },
+}));
+
+const UpdateDialog = ({
+  projectId,
+  isDialogOpen,
   toggle,
   sourceDroppable,
-  id,
-  currentTitle,
-  currentDescription,
-}) {
+  task,
+  created,
+  updated,
+  assign,
+}) => {
   const queryCache = useQueryCache();
 
-  const { handleSubmit, register, errors } = useForm({
+  const classes = useStyles();
+
+  const { enqueueSnackbar } = useSnackbar();
+
+  const {
+    handleSubmit, register, errors, control, watch,
+  } = useForm({
     yupResolver: yupResolver(schema),
+    mode: 'onChange',
   });
 
-  const [errorMessage, setErrorMessage] = useState('');
-  const [destinationDroppable, setDestinationDroppable] = useState(null);
-  const [handleUpdateTask] = useMutation(
-    ({
-      taskId,
-      title,
+  const { status } = watch();
+
+  const { data: getListMember } = useQuery('list member', async () => {
+    const res = await api.get(`/projects/${projectId}/members`, {
+      params: {
+        offset: 0,
+        limit: 100,
+      },
+    });
+    return res.data;
+  });
+
+  const [handleUpdateTask, { isLoading }] = useMutation(
+    async ({
+      name,
       description,
       status,
-    }) => api.put(`/tasks/${taskId}`, {
-      title,
-      description,
-      status,
-    }),
+      priority,
+      assignId,
+    }) => {
+      await api.put(`projects/${projectId}/tasks/${task.id}`, {
+        name,
+        description,
+        status,
+        priority,
+        assignId,
+      });
+    },
     {
       onSuccess: () => {
+        enqueueSnackbar('Update Task Success', { variant: 'success' });
         // refresh source droppable
         queryCache.invalidateQueries(sourceDroppable);
         // refresh destination droppable
+        const destinationDroppable = taskStatus.getKey(status);
         queryCache.invalidateQueries(destinationDroppable);
 
         toggle();
       },
       onError: (error) => {
-        setErrorMessage(error.response.data.message);
+        enqueueSnackbar(error.data.response.message, { variant: 'error' });
       },
     },
   );
 
-  const onSubmit = ({
-    taskId,
-    title,
-    description,
-    status,
-  }) => {
-    const droppableStatus = taskStatus.getKey(Number(status));
-    setDestinationDroppable(droppableStatus);
-    handleUpdateTask({
-      taskId,
-      title,
-      description,
-      status: Number(status),
-    });
-  };
-
-  const showError = (type) => errors && errors[type] && <p className="text-danger">{errors[type].message}</p>;
-
   return (
-    <Modal isOpen={modal} toggle={toggle}>
-      <Form onSubmit={handleSubmit(onSubmit)}>
-        <ModalHeader toggle={toggle}>Update Task</ModalHeader>
-        <ModalBody>
-          <FormGroup className="mt-3">
-            <Input type="hidden" name="taskId" value={id} innerRef={register} />
-          </FormGroup>
-          <FormGroup className="mt-3">
-            <Label className="font-weight-bold">Title</Label>
-            <Input
-              className="mb-2"
-              placeholder="Title"
-              name="title"
-              defaultValue={currentTitle}
-              onChange={() => setErrorMessage('')}
-              innerRef={register}
-            />
-            {showError('title')}
-          </FormGroup>
-          <FormGroup>
-            <Label className="font-weight-bold">Description</Label>
-            <Input
-              className="mb-2"
-              type="textarea"
-              placeholder="Description"
-              name="description"
-              defaultValue={currentDescription}
-              onChange={() => setErrorMessage('')}
-              innerRef={register}
-            />
-            {showError('description')}
-          </FormGroup>
-          <FormGroup>
-            <Label className="font-weight-bold">Status</Label>
-            <Input
-              className="mb-2"
-              type="select"
-              placeholder="Status"
+    <Dialog
+      open={isDialogOpen}
+      aria-labelledby="form-dialog-title"
+      fullWidth
+      onClose={toggle}
+    >
+      <DialogTitle>Update Task</DialogTitle>
+      <DialogContent>
+        <FormGroup>
+          <TextField
+            label="Name"
+            name="name"
+            fullWidth
+            variant="outlined"
+            style={{
+              marginBottom: 20,
+            }}
+            defaultValue={task.name}
+            inputRef={register}
+            error={!!errors.name}
+            helperText={errors.name ? errors.name.message : ''}
+          />
+
+          <TextField
+            rows={4}
+            multiline
+            label="Description"
+            name="description"
+            style={{
+              marginBottom: 20,
+            }}
+            defaultValue={task.description}
+            fullWidth
+            variant="outlined"
+            inputRef={register}
+            error={!!errors.description}
+            helperText={errors.description ? errors.description.message : ''}
+          />
+
+          <FormControl
+            variant="outlined"
+            error={!!errors.status}
+            style={{
+              marginBottom: 20,
+            }}
+          >
+            <InputLabel>Status</InputLabel>
+            <Controller
+              as={(
+                <Select label="Status">
+                  {taskStatus.getValues().map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {taskStatus.getKey(status)}
+                    </MenuItem>
+                  ))}
+                </Select>
+                )}
               name="status"
-              defaultValue={taskStatus.getValue(sourceDroppable)}
-              onChange={() => setErrorMessage('')}
-              innerRef={register}
-            >
-              <option value={taskStatus.OPEN}>Open</option>
-              <option value={taskStatus.DOING}>Doing</option>
-              <option value={taskStatus.CLOSED}>Closed</option>
-            </Input>
-            {showError('status')}
-            {errorMessage && <Alert color="danger">{errorMessage}</Alert>}
-          </FormGroup>
-        </ModalBody>
-        <ModalFooter>
-          <Button type="submit" color="success">Do Something</Button>
-          <Button color="danger" onClick={toggle}>Cancel</Button>
-        </ModalFooter>
-      </Form>
-    </Modal>
+              defaultValue={task.status}
+              inputRef={register}
+              control={control}
+            />
+            <FormHelperText>{errors.status ? errors.status.message : ''}</FormHelperText>
+          </FormControl>
+
+          <FormControl
+            variant="outlined"
+            error={!!errors.priority}
+            style={{
+              marginBottom: 20,
+            }}
+          >
+            <InputLabel>Priority</InputLabel>
+            <Controller
+              as={(
+                <Select label="Priority">
+                  {taskPriority.getValues().map((priority) => (
+                    <MenuItem key={priority} value={priority}>
+                      {taskPriority.getKey(priority)}
+                    </MenuItem>
+                  ))}
+                </Select>
+                )}
+              defaultValue={task.priority}
+              name="priority"
+              inputRef={register}
+              control={control}
+            />
+            <FormHelperText>{errors.priority ? errors.priority.message : ''}</FormHelperText>
+          </FormControl>
+
+          <TextField
+            label="Distribute"
+            name="distribute"
+            fullWidth
+            variant="outlined"
+            style={{
+              marginBottom: 20,
+            }}
+            defaultValue={taskDistribute.getKey(task.distribute)}
+            inputRef={register}
+            disabled
+          />
+
+          <FormControl
+            variant="outlined"
+            error={!!errors.assignId}
+          >
+            <InputLabel>Assign</InputLabel>
+            <Controller
+              as={(
+                <Select label="Assign">
+                  {
+                    getListMember && getListMember.members.map((member) => (
+                      <MenuItem key={member.id} value={member.id}>
+                        <div style={{ display: 'flex' }}>
+                          <Avatar src={member.avatar} className={classes.small} />
+                          <Typography>{member.email}</Typography>
+                        </div>
+                      </MenuItem>
+                    ))
+                  }
+                </Select>
+                )}
+              defaultValue={assign.id}
+              name="assignId"
+              inputRef={register}
+              control={control}
+              style={{
+                marginBottom: 20,
+              }}
+            />
+            <FormHelperText>{errors.assignId ? errors.assignId.message : ''}</FormHelperText>
+          </FormControl>
+
+          <TextField
+            label="Created By"
+            name="created"
+            fullWidth
+            variant="outlined"
+            style={{
+              marginBottom: 20,
+            }}
+            InputProps={{
+              startAdornment: <Avatar src={created.avatar} className={classes.small} />,
+            }}
+            defaultValue={created.email}
+            inputRef={register}
+            disabled
+          />
+
+          <TextField
+            label="Last Updated"
+            name="updated"
+            fullWidth
+            variant="outlined"
+            style={{
+              marginBottom: 20,
+            }}
+            InputProps={{
+              startAdornment: <Avatar src={updated.avatar} className={classes.small} />,
+            }}
+            defaultValue={updated.email}
+            inputRef={register}
+            disabled
+          />
+
+        </FormGroup>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => toggle()} color="secondary" variant="contained">
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit(handleUpdateTask)} color="primary" autoFocus disabled={isLoading} variant="contained">
+          {isLoading ? 'Loading...' : 'Approve'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
-}
+};
 
 UpdateDialog.propTypes = {
-  id: PropTypes.number.isRequired,
-  currentTitle: PropTypes.string.isRequired,
-  currentDescription: PropTypes.string.isRequired,
+  task: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    priority: PropTypes.number.isRequired,
+    status: PropTypes.number.isRequired,
+    distribute: PropTypes.number.isRequired,
+  }).isRequired,
+  created: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    fullName: PropTypes.string.isRequired,
+    email: PropTypes.string.isRequired,
+    avatar: PropTypes.string.isRequired,
+  }).isRequired,
+  updated: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    fullName: PropTypes.string.isRequired,
+    email: PropTypes.string.isRequired,
+    avatar: PropTypes.string.isRequired,
+  }).isRequired,
+  assign: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    fullName: PropTypes.string.isRequired,
+    email: PropTypes.string.isRequired,
+    avatar: PropTypes.string.isRequired,
+  }).isRequired,
   sourceDroppable: PropTypes.string.isRequired,
-  modal: PropTypes.bool.isRequired,
+  isDialogOpen: PropTypes.bool.isRequired,
   toggle: PropTypes.func.isRequired,
+  projectId: PropTypes.string.isRequired,
 };
 
 export default UpdateDialog;
