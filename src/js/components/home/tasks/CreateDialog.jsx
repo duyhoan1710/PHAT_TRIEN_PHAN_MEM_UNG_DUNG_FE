@@ -181,8 +181,10 @@ const CreateDialog = ({ projectId }) => {
                     {
                       getListMember && getListMember.members.map((member) => (
                         <MenuItem key={member.id} value={member.id}>
-                          <Avatar src={member.avatar} className={classes.small} />
-                          <Typography>{member.email}</Typography>
+                          <div style={{ display: 'flex' }}>
+                            <Avatar src={member.avatar} className={classes.small} />
+                            <Typography>{member.email}</Typography>
+                          </div>
                         </MenuItem>
                       ))
                     }

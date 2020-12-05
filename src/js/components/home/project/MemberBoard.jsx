@@ -10,6 +10,7 @@ import PropTypes from 'prop-types';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import dayjs from 'dayjs';
 
+import AddMemberDialog from './AddMemberDialog';
 import ConfirmDialog from '../../common/ConfirmDialog';
 import { api } from '../../../helpers/axios';
 
@@ -38,7 +39,7 @@ const MemberBoard = ({ projectId }) => {
 
   const classes = useStyles();
 
-  const { data: getListMember, isLoading, error } = useQuery('list member', async () => {
+  const { data: getListMember, isLoading, error } = useQuery('list members', async () => {
     const res = await api.get(`/projects/${projectId}/members`, {
       params: {
         offset: 0,
@@ -46,6 +47,8 @@ const MemberBoard = ({ projectId }) => {
       },
     });
     return res.data;
+  }, {
+    staleTime: 180000,
   });
 
   const Header = (
@@ -103,6 +106,9 @@ const MemberBoard = ({ projectId }) => {
   if (getListMember) {
     return (
       <>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <AddMemberDialog projectId={projectId} members={getListMember.members} />
+        </div>
         <TableContainer>
           <Table>
             {Header}
@@ -159,7 +165,7 @@ const MemberBoard = ({ projectId }) => {
 };
 
 MemberBoard.propTypes = {
-  projectId: PropTypes.number.isRequired,
+  projectId: PropTypes.string.isRequired,
 };
 
 export default MemberBoard;

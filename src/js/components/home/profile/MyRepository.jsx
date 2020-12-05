@@ -35,7 +35,7 @@ const MyRepository = () => {
   });
 
   const handleClick = (projectId) => {
-    history.push(`/projects/${projectId}`);
+    history.push(`/projects/${projectId}/board`);
   };
 
   if (projects) {

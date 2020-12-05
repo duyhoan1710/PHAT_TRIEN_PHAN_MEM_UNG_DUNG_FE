@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useInfiniteQuery } from 'react-query';
 import PropTypes from 'prop-types';
 import { Droppable } from 'react-beautiful-dnd';
@@ -21,8 +21,8 @@ const TaskColumn = ({ droppableId, projectId }) => {
 
   const limit = 10;
   let offset = 0;
-  let tasks = [];
-  const ref = useRef(null);
+  const [tasks, setTasks] = useState([]);
+
   const fetchTasks = async (key, nextId = 0) => {
     const res = await api
       .get(`/projects/${projectId}/tasks`, {
@@ -37,11 +37,21 @@ const TaskColumn = ({ droppableId, projectId }) => {
 
   const { data, fetchMore } = useInfiniteQuery(`${droppableId}`, fetchTasks);
 
-  if (data) {
-    data.forEach((group) => {
-      tasks = [...tasks, ...group];
-    });
-  }
+  useEffect(() => {
+    if (data) {
+      if (
+        data.length >= 2
+        && JSON.stringify(data[data.length - 1]) === JSON.stringify(data[data.length - 2])
+      // eslint-disable-next-line no-empty
+      ) {} else {
+        let tasksFormat = [];
+        data.forEach((group) => {
+          tasksFormat = [...tasksFormat, ...group];
+        });
+        setTasks(tasksFormat);
+      }
+    }
+  }, [data]);
 
   const handleScroll = async (e) => {
     const { scrollTop, clientHeight, scrollHeight } = e.target;
@@ -51,11 +61,6 @@ const TaskColumn = ({ droppableId, projectId }) => {
     }
   };
 
-  useEffect(() => {
-    ref.current.addEventListener('scroll', handleScroll);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <Droppable droppableId={droppableId} isCombineEnabled>
       {(provided) => (
@@ -63,11 +68,10 @@ const TaskColumn = ({ droppableId, projectId }) => {
           {...provided.droppableProps}
           ref={provided.innerRef}
           className={classes.overflow}
+          onScroll={handleScroll}
         >
-          <div
-            ref={ref}
-          >
-            {
+
+          {
               tasks && tasks.map((task, index) => (
                 <Task
                   projectId={projectId}
@@ -104,7 +108,6 @@ const TaskColumn = ({ droppableId, projectId }) => {
                 />
               ))
             }
-          </div>
           {provided.placeholder}
         </div>
       )}

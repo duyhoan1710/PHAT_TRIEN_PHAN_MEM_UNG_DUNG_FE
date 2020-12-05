@@ -62,7 +62,7 @@ ConfirmDialog.propTypes = {
   title: PropTypes.string.isRequired,
   content: PropTypes.string.isRequired,
   data: PropTypes.shape({
-    projectId: PropTypes.number.isRequired,
+    projectId: PropTypes.string.isRequired,
     memberId: PropTypes.number.isRequired,
     queryCache: PropTypes.string,
   }).isRequired,
