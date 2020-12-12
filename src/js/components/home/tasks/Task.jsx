@@ -34,10 +34,7 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 function Task({
-  task: {
-    id, name, description, priority, status, distribute, createdAt,
-  },
-  created, updated, assign, index, droppableId, projectId,
+  task, index, droppableId, projectId,
 }) {
   const classes = useStyles();
 
@@ -47,9 +44,7 @@ function Task({
 
   return (
     <Draggable
-      draggableId={JSON.stringify({
-        id, name, description, status, priority,
-      })}
+      draggableId={JSON.stringify(task)}
       index={index}
     >
       {(provided) => (
@@ -62,17 +57,17 @@ function Task({
           <Card onClick={toggle} className={classes.card}>
             <CardContent>
               <Typography color="textSecondary" component="h4">
-                <Popover text={name} />
+                <Popover text={task.name} />
               </Typography>
               <Typography color="textSecondary">
-                <AssignmentReturnedIcon color={`${colorDistribute.getKey(distribute).toLocaleLowerCase()}`} />
-                <ArrowUpwardIcon style={{ color: colorPriority.getKey(priority) }} />
+                <AssignmentReturnedIcon color={`${colorDistribute.getKey(task.distribute).toLocaleLowerCase()}`} />
+                <ArrowUpwardIcon style={{ color: colorPriority.getKey(task.priority) }} />
               </Typography>
-              <Typography color="textSecondary" className={classes.footer}>
-                {dayjs(createdAt).format('MM-DD-YYYY')}
+              <div color="textSecondary" className={classes.footer}>
+                {dayjs(task.created_at).format('MM-DD-YYYY')}
                 <div style={{ flexGrow: 1 }} />
-                <Avatar src={assign.avatar} className={classes.small} />
-              </Typography>
+                <Avatar src={task.assign_avatar} className={classes.small} />
+              </div>
             </CardContent>
           </Card>
           <UpdateDialog
@@ -80,12 +75,7 @@ function Task({
             toggle={toggle}
             sourceDroppable={droppableId}
             projectId={projectId}
-            task={{
-              id, name, description, status, priority, distribute,
-            }}
-            created={created}
-            updated={updated}
-            assign={assign}
+            task={task}
           />
         </div>
       )}
@@ -97,33 +87,7 @@ Task.propTypes = {
   index: PropTypes.number.isRequired,
   droppableId: PropTypes.string.isRequired,
   projectId: PropTypes.string.isRequired,
-  task: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    name: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    priority: PropTypes.number.isRequired,
-    status: PropTypes.number.isRequired,
-    distribute: PropTypes.number.isRequired,
-    createdAt: PropTypes.string.isRequired,
-  }).isRequired,
-  created: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    fullName: PropTypes.string.isRequired,
-    email: PropTypes.string.isRequired,
-    avatar: PropTypes.string.isRequired,
-  }).isRequired,
-  updated: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    fullName: PropTypes.string.isRequired,
-    email: PropTypes.string.isRequired,
-    avatar: PropTypes.string.isRequired,
-  }).isRequired,
-  assign: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    fullName: PropTypes.string.isRequired,
-    email: PropTypes.string.isRequired,
-    avatar: PropTypes.string.isRequired,
-  }).isRequired,
+  task: PropTypes.object.isRequired,
 };
 
 export default Task;

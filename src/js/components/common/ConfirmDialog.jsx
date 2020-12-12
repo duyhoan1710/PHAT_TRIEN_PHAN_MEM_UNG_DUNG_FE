@@ -5,6 +5,7 @@ import {
 } from '@material-ui/core';
 import { useSnackbar } from 'notistack';
 import PropTypes from 'prop-types';
+import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 
 import { api } from '../../helpers/axios';
 
@@ -12,7 +13,6 @@ const ConfirmDialog = ({
   toggle, isDialogOpen, title, content, data,
 }) => {
   const queryCache = useQueryCache();
-
   const { enqueueSnackbar } = useSnackbar();
 
   const [handleSubmit, { isLoading }] = useMutation(
@@ -23,7 +23,7 @@ const ConfirmDialog = ({
       onSuccess: () => {
         if (data.queryCache) queryCache.invalidateQueries(data.queryCache);
         toggle();
-        enqueueSnackbar('Create Project success', { variant: 'success' });
+        enqueueSnackbar('Remove user from project success', { variant: 'success' });
       },
       onError: (e) => {
         enqueueSnackbar(e.response.data.message, { variant: 'error' });
@@ -32,27 +32,33 @@ const ConfirmDialog = ({
   );
 
   return (
-    <Dialog
-      open={isDialogOpen}
-      aria-labelledby="form-dialog-title"
-      fullWidth
-      onClose={toggle}
-    >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          {content}
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={toggle} color="secondary" variant="contained">
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} color="primary" autoFocus disabled={isLoading} variant="contained">
-          {isLoading ? 'Loading...' : 'Approve'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <>
+      <Button onClick={toggle}>
+        <DeleteForeverIcon color="primary" style={{ fontSize: 30 }} />
+      </Button>
+      <Dialog
+        open={isDialogOpen}
+        aria-labelledby="form-dialog-title"
+        fullWidth
+        onClose={toggle}
+      >
+        <DialogTitle>{title}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {content}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={toggle} color="secondary" variant="contained">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} color="primary" autoFocus disabled={isLoading} variant="contained">
+            {isLoading ? 'Loading...' : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+
   );
 };
 

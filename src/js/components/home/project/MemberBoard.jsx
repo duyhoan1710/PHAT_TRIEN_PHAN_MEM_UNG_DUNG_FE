@@ -4,10 +4,9 @@ import { useHistory } from 'react-router-dom';
 import { Table } from 'reactstrap';
 import {
   CircularProgress, makeStyles, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Avatar, Button,
+  TableContainer, TableHead, TableRow, Avatar,
 } from '@material-ui/core';
 import PropTypes from 'prop-types';
-import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import dayjs from 'dayjs';
 
 import AddMemberDialog from './AddMemberDialog';
@@ -48,7 +47,7 @@ const MemberBoard = ({ projectId }) => {
     });
     return res.data;
   }, {
-    staleTime: 180000,
+    retry: 1,
   });
 
   const Header = (
@@ -141,15 +140,12 @@ const MemberBoard = ({ projectId }) => {
                     </TableCell>
 
                     <TableCell>
-                      <Button onClick={toggle}>
-                        <DeleteForeverIcon color="primary" style={{ fontSize: 30 }} />
-                      </Button>
                       <ConfirmDialog
                         isDialogOpen={isDialogOpen}
                         toggle={toggle}
                         title="Remove Member"
                         content="Are you sure to remove this member from project ?"
-                        data={{ projectId, memberId: member.id, queryCache: 'list member' }}
+                        data={{ projectId, memberId: member.id, queryCache: 'list members' }}
                       />
                     </TableCell>
 

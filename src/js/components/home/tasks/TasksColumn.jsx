@@ -16,12 +16,14 @@ const useStyles = makeStyles(() => ({
   },
 }));
 
-const TaskColumn = ({ droppableId, projectId }) => {
+const TaskColumn = ({
+  droppableId, projectId, draggEndResult, setDraggEndResult,
+}) => {
   const classes = useStyles();
 
   const limit = 10;
   let offset = 0;
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(null);
 
   const fetchTasks = async (key, nextId = 0) => {
     const res = await api
@@ -40,18 +42,44 @@ const TaskColumn = ({ droppableId, projectId }) => {
   useEffect(() => {
     if (data) {
       if (
-        data.length >= 2
-        && JSON.stringify(data[data.length - 1]) === JSON.stringify(data[data.length - 2])
-      // eslint-disable-next-line no-empty
-      ) {} else {
-        let tasksFormat = [];
+        data.length < 2
+        || JSON.stringify(data[data.length - 1]) !== JSON.stringify(data[data.length - 2])
+      ) {
+        let newTasks = [];
         data.forEach((group) => {
-          tasksFormat = [...tasksFormat, ...group];
+          newTasks = [...newTasks, ...group];
         });
-        setTasks(tasksFormat);
+
+        setTasks(newTasks);
       }
     }
   }, [data]);
+
+  useEffect(() => {
+    if (
+      draggEndResult
+      && draggEndResult.sourceTask
+      && draggEndResult.destination.droppableId === droppableId
+    ) {
+      const copyTasks = [...tasks];
+      copyTasks.splice(draggEndResult.destination.index, 0, draggEndResult.sourceTask);
+      setTasks(copyTasks);
+      setDraggEndResult({});
+    }
+  }, [draggEndResult, droppableId, setDraggEndResult, tasks]);
+
+  useEffect(() => {
+    if (
+      draggEndResult
+      && draggEndResult.source
+      && draggEndResult.source.droppableId === droppableId
+    ) {
+      const copyTasks = [...tasks];
+      copyTasks.splice(draggEndResult.source.index, 1);
+      setTasks(copyTasks);
+      setDraggEndResult({});
+    }
+  }, [draggEndResult, droppableId, setDraggEndResult, tasks]);
 
   const handleScroll = async (e) => {
     const { scrollTop, clientHeight, scrollHeight } = e.target;
@@ -62,7 +90,7 @@ const TaskColumn = ({ droppableId, projectId }) => {
   };
 
   return (
-    <Droppable droppableId={droppableId} isCombineEnabled>
+    <Droppable droppableId={droppableId}>
       {(provided) => (
         <div
           {...provided.droppableProps}
@@ -70,39 +98,12 @@ const TaskColumn = ({ droppableId, projectId }) => {
           className={classes.overflow}
           onScroll={handleScroll}
         >
-
           {
               tasks && tasks.map((task, index) => (
                 <Task
                   projectId={projectId}
                   droppableId={droppableId}
-                  task={{
-                    id: task.id,
-                    name: task.name,
-                    description: task.description,
-                    status: task.status,
-                    priority: task.priority,
-                    distribute: task.distribute,
-                    createdAt: task.created_at,
-                  }}
-                  created={{
-                    id: task.created_id,
-                    fullName: task.created_name,
-                    email: task.created_email,
-                    avatar: task.created_avatar,
-                  }}
-                  updated={{
-                    id: task.updated_id,
-                    fullName: task.updated_name,
-                    email: task.updated_email,
-                    avatar: task.updated_avatar,
-                  }}
-                  assign={{
-                    id: task.assign_id,
-                    fullName: task.assign_name,
-                    email: task.assign_email,
-                    avatar: task.assign_avatar,
-                  }}
+                  task={task}
                   key={task.id}
                   index={index}
                 />
@@ -119,6 +120,8 @@ TaskColumn.propTypes = {
   statusTitle: PropTypes.string.isRequired,
   droppableId: PropTypes.string.isRequired,
   projectId: PropTypes.string.isRequired,
+  draggEndResult: PropTypes.object.isRequired,
+  setDraggEndResult: PropTypes.func.isRequired,
 };
 
 export default TaskColumn;

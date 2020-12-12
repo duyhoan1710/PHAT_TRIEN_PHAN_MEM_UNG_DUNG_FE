@@ -42,9 +42,6 @@ const UpdateDialog = ({
   toggle,
   sourceDroppable,
   task,
-  created,
-  updated,
-  assign,
 }) => {
   const queryCache = useQueryCache();
 
@@ -90,10 +87,10 @@ const UpdateDialog = ({
     {
       onSuccess: () => {
         enqueueSnackbar('Update Task Success', { variant: 'success' });
+        const destinationDroppable = taskStatus.getKey(status);
         // refresh source droppable
         queryCache.invalidateQueries(sourceDroppable);
         // refresh destination droppable
-        const destinationDroppable = taskStatus.getKey(status);
         queryCache.invalidateQueries(destinationDroppable);
 
         toggle();
@@ -229,7 +226,7 @@ const UpdateDialog = ({
                   }
                 </Select>
                 )}
-              defaultValue={assign.id}
+              defaultValue={task.assign_id}
               name="assignId"
               inputRef={register}
               control={control}
@@ -249,9 +246,9 @@ const UpdateDialog = ({
               marginBottom: 20,
             }}
             InputProps={{
-              startAdornment: <Avatar src={created.avatar} className={classes.small} />,
+              startAdornment: <Avatar src={task.created_avatar} className={classes.small} />,
             }}
-            defaultValue={created.email}
+            defaultValue={task.created_email}
             inputRef={register}
             disabled
           />
@@ -265,9 +262,9 @@ const UpdateDialog = ({
               marginBottom: 20,
             }}
             InputProps={{
-              startAdornment: <Avatar src={updated.avatar} className={classes.small} />,
+              startAdornment: <Avatar src={task.updated_avatar} className={classes.small} />,
             }}
-            defaultValue={updated.email}
+            defaultValue={task.updated_email}
             inputRef={register}
             disabled
           />
@@ -287,32 +284,7 @@ const UpdateDialog = ({
 };
 
 UpdateDialog.propTypes = {
-  task: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    name: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    priority: PropTypes.number.isRequired,
-    status: PropTypes.number.isRequired,
-    distribute: PropTypes.number.isRequired,
-  }).isRequired,
-  created: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    fullName: PropTypes.string.isRequired,
-    email: PropTypes.string.isRequired,
-    avatar: PropTypes.string.isRequired,
-  }).isRequired,
-  updated: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    fullName: PropTypes.string.isRequired,
-    email: PropTypes.string.isRequired,
-    avatar: PropTypes.string.isRequired,
-  }).isRequired,
-  assign: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    fullName: PropTypes.string.isRequired,
-    email: PropTypes.string.isRequired,
-    avatar: PropTypes.string.isRequired,
-  }).isRequired,
+  task: PropTypes.object.isRequired,
   sourceDroppable: PropTypes.string.isRequired,
   isDialogOpen: PropTypes.bool.isRequired,
   toggle: PropTypes.func.isRequired,
